@@ -11,11 +11,11 @@
     h2 { text-align: center; margin-bottom: 20px; }
     label { font-weight: bold; display:block; margin-top:8px; }
     input, textarea { width: 100%; padding: 8px; margin: 6px 0 14px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-    #lineas { margin-bottom: 12px; }
-    .linea { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
-    .linea .concepto { flex: 1; padding: 6px; }
+    #lineas, #clienteCampos { margin-bottom: 12px; }
+    .linea, .clienteLinea { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+    .linea .concepto, .clienteLinea .concepto { flex: 1; padding: 6px; }
     .linea .precio { width: 120px; padding: 6px; text-align: right; }
-    .linea .remove { background: transparent; border: none; cursor: pointer; font-size: 18px; }
+    .linea .remove, .clienteLinea .remove { background: transparent; border: none; cursor: pointer; font-size: 18px; }
     .controls { display:flex; gap:10px; margin-bottom: 10px; }
     .controls button { flex:1; padding: 10px; border: none; border-radius: 8px; background: #0077cc; color: white; font-size: 16px; cursor: pointer; }
     .controls button:hover { filter:brightness(.95); }
@@ -23,6 +23,10 @@
     #addLine:hover { filter:brightness(.95); }
     #clearLines { background: #dc3545; }
     #clearLines:hover { filter:brightness(.95); }
+    #addClienteCampo { background: #17a2b8; }
+    #addClienteCampo:hover { filter:brightness(.95); }
+    #clearClienteCampos { background: #ffc107; color: black; }
+    #clearClienteCampos:hover { filter:brightness(.95); }
     #generar { background: #0077cc; }
     #generar:hover { filter:brightness(.95); }
     #preview { background: #6c757d; }
@@ -40,9 +44,22 @@
     }
     #ticket h3 { text-align: center; margin: 0 0 8px 0; }
     #ticket .line { display:flex; justify-content:space-between; gap:8px; }
-    #ticket .left { flex:1; border-bottom:1px dotted #999; padding-right:8px; }
+    #ticket .left { flex:1; border-bottom:1px dotted #999; padding-right: 8px; }
     #ticket .right { min-width:70px; text-align:right; }
-    #ticket p { margin:6px 0; }
+    #ticket p { margin: 6px 0; }
+    #ticket .clienteTitulo {
+      font-weight: bold;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+    #ticket .clienteLinea {
+      font-size: 12px; /* 2 puntos menos que el resto */
+      line-height: 1.1;
+      margin-left: 10px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+      white-space: normal;
+    }
     @media print {
       body * { visibility: hidden; }
       #ticket, #ticket * { visibility: visible; }
@@ -74,6 +91,14 @@
       <button id="clearLines">Borrar líneas</button>
     </div>
 
+    <h3>Cliente (opcional)</h3>
+    <div id="clienteCampos" aria-live="polite"></div>
+
+    <div class="controls">
+      <button id="addClienteCampo">Añadir campo cliente</button>
+      <button id="clearClienteCampos">Borrar campos cliente</button>
+    </div>
+
     <label for="obs">Observaciones</label>
     <textarea id="obs" rows="3" placeholder="(Opcional)"></textarea>
 
@@ -91,8 +116,11 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const lineasCont = document.getElementById('lineas');
-      const addBtn = document.getElementById('addLine');
-      const clearBtn = document.getElementById('clearLines');
+      const clienteCont = document.getElementById('clienteCampos');
+      const addLineBtn = document.getElementById('addLine');
+      const clearLinesBtn = document.getElementById('clearLines');
+      const addClienteBtn = document.getElementById('addClienteCampo');
+      const clearClienteBtn = document.getElementById('clearClienteCampos');
       const generarBtn = document.getElementById('generar');
       const previewBtn = document.getElementById('preview');
       const downloadBtn = document.getElementById('downloadImage');
@@ -122,6 +150,7 @@
         reader.readAsDataURL(file);
       });
 
+      // Función para añadir una línea concepto
       function agregarLinea(concepto = '', precio = '') {
         const div = document.createElement('div');
         div.className = 'linea';
@@ -137,14 +166,32 @@
         return div;
       }
 
+      // Función para añadir un campo cliente (solo un input)
+      function agregarClienteCampo(valor = '') {
+        const div = document.createElement('div');
+        div.className = 'clienteLinea';
+        div.innerHTML = `
+          <input type="text" class="concepto" placeholder="Campo cliente" value="${escapeHtml(valor)}" style="flex:1; padding:6px;" />
+          <button class="remove" title="Eliminar campo">✖</button>
+        `;
+        div.querySelector('.remove').addEventListener('click', () => {
+          clienteCont.removeChild(div);
+        });
+        clienteCont.appendChild(div);
+        return div;
+      }
+
+      // Generar HTML para el ticket
       function generarHtmlTicket(preview = false) {
         const empresa = document.getElementById('empresa').value || '---';
         const fecha = fechaInput.value || '';
         const obs = document.getElementById('obs').value || '';
         const numDoc = document.getElementById('numDoc').value || '';
 
-        const conceptos = [...document.querySelectorAll('.concepto')];
-        const precios = [...document.querySelectorAll('.precio')];
+        const conceptos = [...document.querySelectorAll('#lineas .concepto')];
+        const precios = [...document.querySelectorAll('#lineas .precio')];
+
+        const clienteCampos = [...document.querySelectorAll('#clienteCampos .concepto')];
 
         let html = '';
 
@@ -160,11 +207,30 @@
           html += `<p><strong>Documento:</strong> ${escapeHtml(numDoc)}</p>`;
         }
 
-        html += `<p>Fecha: ${escapeHtml(fecha)}</p>`;
+        // Formatear fecha a dd/mm/yyyy
+        if (fecha) {
+          const d = new Date(fecha);
+          const fechaFormat = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2) + '/' + d.getFullYear();
+          html += `<p><strong>Fecha:</strong> ${escapeHtml(fechaFormat)}</p>`;
+        } else {
+          html += `<p><strong>Fecha:</strong> ---</p>`;
+        }
+
+        // Bloque Cliente solo si hay algún campo con texto
+        const clienteDatos = clienteCampos
+          .map(input => input.value.trim())
+          .filter(texto => texto !== '');
+
+        if (clienteDatos.length > 0) {
+          html += `<p class="clienteTitulo">Cliente:</p>`;
+          clienteDatos.forEach(linea => {
+            html += `<p class="clienteLinea">${escapeHtml(linea)}</p>`;
+          });
+        }
+
         html += `<hr>`;
 
         let total = 0;
-
         for (let i = 0; i < conceptos.length; i++) {
           const c = conceptos[i].value || '';
           const p = parseFloat(precios[i].value) || 0;
@@ -192,12 +258,17 @@
         return html;
       }
 
-      addBtn.addEventListener('click', () => agregarLinea());
-      clearBtn.addEventListener('click', () => { lineasCont.innerHTML = ''; });
+      addLineBtn.addEventListener('click', () => agregarLinea());
+      clearLinesBtn.addEventListener('click', () => { lineasCont.innerHTML = ''; });
+
+      addClienteBtn.addEventListener('click', () => agregarClienteCampo());
+      clearClienteBtn.addEventListener('click', () => { clienteCont.innerHTML = ''; });
+
       generarBtn.addEventListener('click', () => {
         generarHtmlTicket(true);
         window.print();
       });
+
       previewBtn.addEventListener('click', () => {
         generarHtmlTicket(true);
       });
@@ -215,8 +286,9 @@
         link.click();
       });
 
-      // Línea inicial
+      // Línea inicial para conceptos y cliente
       agregarLinea();
+      agregarClienteCampo();
 
       // Enter añade línea si estás en última línea precio
       lineasCont.addEventListener('keydown', (e) => {
@@ -227,6 +299,19 @@
             agregarLinea();
             const lastConcept = lineasCont.lastElementChild.querySelector('.concepto');
             if (lastConcept) lastConcept.focus();
+          }
+        }
+      });
+
+      // Enter añade línea si estás en última línea campo cliente
+      clienteCont.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const isLast = e.target === clienteCont.lastElementChild?.querySelector('.concepto') || false;
+          if (isLast) {
+            e.preventDefault();
+            agregarClienteCampo();
+            const lastCampo = clienteCont.lastElementChild.querySelector('.concepto');
+            if (lastCampo) lastCampo.focus();
           }
         }
       });
