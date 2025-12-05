@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Generador de Tiquet</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="styles.css" />
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -61,6 +60,12 @@
     <label for="fecha">Fecha de la compra</label>
     <input type="date" id="fecha" />
 
+    <label for="logo">Logo (opcional)</label>
+    <input type="file" id="logo" accept="image/*" />
+
+    <label for="numDoc">Documento (opcional)</label>
+    <input type="text" id="numDoc" placeholder="Ej: CIF, NIF, etc." />
+
     <h3>Conceptos</h3>
     <div id="lineas" aria-live="polite"></div>
 
@@ -101,6 +106,22 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
+      let logoDataURL = null; // Aquí guardaremos la imagen subida
+
+      const logoInput = document.getElementById('logo');
+      logoInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+          logoDataURL = null;
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          logoDataURL = e.target.result; // imagen en base64
+        }
+        reader.readAsDataURL(file);
+      });
+
       function agregarLinea(concepto = '', precio = '') {
         const div = document.createElement('div');
         div.className = 'linea';
@@ -120,11 +141,25 @@
         const empresa = document.getElementById('empresa').value || '---';
         const fecha = fechaInput.value || '';
         const obs = document.getElementById('obs').value || '';
+        const numDoc = document.getElementById('numDoc').value || '';
 
         const conceptos = [...document.querySelectorAll('.concepto')];
         const precios = [...document.querySelectorAll('.precio')];
 
-        let html = `<h3>${escapeHtml(empresa)}</h3>`;
+        let html = '';
+
+        if (logoDataURL) {
+          html += `<div style="text-align:center; margin-bottom:10px;">
+            <img src="${logoDataURL}" alt="Logo" style="max-width:150px; max-height:80px; object-fit: contain;" />
+          </div>`;
+        }
+
+        html += `<h3>${escapeHtml(empresa)}</h3>`;
+
+        if (numDoc.trim() !== '') {
+          html += `<p><strong>Documento:</strong> ${escapeHtml(numDoc)}</p>`;
+        }
+
         html += `<p>Fecha: ${escapeHtml(fecha)}</p>`;
         html += `<hr>`;
 
