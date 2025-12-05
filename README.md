@@ -1,7 +1,6 @@
 # Ticket-generator-pwa
 ----------------------------------------------------------------
-Es un simple generador de tiquet. No hay logo ni numeración. Es un código muy sencillo. 
-Se podría modificar e incluir esos campos. 
+Es un simple generador de tiquet.
 Hay opción de imprimirlo o descargarlo como imagen.
 -----------------------------------------------------------------
 Este mini-programa es de código abierto (libre y gratuito).
