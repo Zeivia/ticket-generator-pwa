@@ -1,7 +1,7 @@
 {
   "name": "Generador de Tiquets",
   "short_name": "Tiquets",
-  "start_url": "/index.html",
+  "start_url": "/ticket-generator-pwa/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
