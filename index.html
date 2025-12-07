@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Generador de Tiquet</title>
+  <link rel="manifest" href="manifest.json" />
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
     .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h2 { text-align: center; margin-bottom: 20px; }
     label { font-weight: bold; display:block; margin-top:8px; }
-    input, textarea, button { font-family: inherit; }
     input, textarea { width: 100%; padding: 8px; margin: 6px 0 14px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
 
     #lineas, #clienteCampos { margin-bottom: 12px; }
@@ -31,7 +31,6 @@
 
     #downloadImage { background: #17a2b8; color: white; padding: 10px; border:none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; display:none; }
 
-    /* TICKET */
     #ticket {
       display: none;
       padding: 20px;
@@ -45,19 +44,18 @@
 
     #ticket h3 { text-align: center; margin: 0 0 8px 0; }
 
-    #ticket .line { display:block; margin-bottom:6px; }
+    #ticket .line { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
     #ticket .left {
-      display:block;
+      flex:1;
       border-bottom:1px dotted #999;
       padding-right: 8px;
       white-space: normal;
       word-wrap: break-word;
     }
     #ticket .right {
-      display:block;
+      min-width:70px;
       text-align:right;
       white-space: nowrap;
-      margin-top: -22px; /* visually align price to right of first line */
     }
 
     #ticket .clienteTitulo {
@@ -73,7 +71,6 @@
       margin-top: 2px;
       margin-bottom: 2px;
       white-space: normal;
-      word-wrap: break-word;
     }
 
     @media print {
@@ -87,20 +84,20 @@
   <div class="container">
     <h2>Generador de Tiquet</h2>
 
-    <label for="empresa">Empresa que genera el tiquet</label>
+    <label>Empresa que genera el tiquet</label>
     <input type="text" id="empresa" placeholder="Ej: McDonald's" />
 
-    <label for="fecha">Fecha de la compra</label>
+    <label>Fecha de la compra</label>
     <input type="date" id="fecha" />
 
-    <label for="logo">Logo (opcional)</label>
+    <label>Logo (opcional)</label>
     <input type="file" id="logo" accept="image/*" />
 
-    <label for="numDoc">Documento (opcional)</label>
+    <label>Documento (opcional)</label>
     <input type="text" id="numDoc" placeholder="Ej: Num tiquet, factura, documento..." />
 
     <h3>Conceptos</h3>
-    <div id="lineas" aria-live="polite"></div>
+    <div id="lineas"></div>
 
     <div class="controls">
       <button id="addLine">Añadir línea</button>
@@ -108,14 +105,14 @@
     </div>
 
     <h3>Cliente (opcional)</h3>
-    <div id="clienteCampos" aria-live="polite"></div>
+    <div id="clienteCampos"></div>
 
     <div class="controls">
       <button id="addClienteCampo">Añadir campo cliente</button>
       <button id="clearClienteCampos">Borrar campos cliente</button>
     </div>
 
-    <label for="obs">Observaciones</label>
+    <label>Observaciones</label>
     <textarea id="obs" rows="3"></textarea>
 
     <div style="margin-top:12px; display:flex; gap:10px;">
@@ -126,40 +123,29 @@
     <button id="downloadImage">Descargar como imagen</button>
   </div>
 
-  <div id="ticket" role="document" aria-label="Tiquet imprimible"></div>
+  <div id="ticket"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', () => {
       const lineasCont = document.getElementById('lineas');
       const clienteCont = document.getElementById('clienteCampos');
-      const addLineBtn = document.getElementById('addLine');
-      const clearLinesBtn = document.getElementById('clearLines');
-      const addClienteBtn = document.getElementById('addClienteCampo');
-      const clearClienteBtn = document.getElementById('clearClienteCampos');
-      const generarBtn = document.getElementById('generar');
-      const previewBtn = document.getElementById('preview');
-      const downloadBtn = document.getElementById('downloadImage');
       const fechaInput = document.getElementById('fecha');
+      const downloadBtn = document.getElementById('downloadImage');
 
-      // Fecha por defecto
       fechaInput.value = new Date().toISOString().slice(0,10);
 
       let logoDataURL = null;
       document.getElementById('logo').addEventListener('change', e => {
         const file = e.target.files[0];
-        if (!file) { logoDataURL = null; return; }
+        if (!file) return logoDataURL = null;
         const r = new FileReader();
         r.onload = ev => logoDataURL = ev.target.result;
         r.readAsDataURL(file);
       });
 
       function escapeHtml(s) {
-        return String(s)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
       function agregarLinea(concepto = '', precio = '') {
@@ -168,11 +154,10 @@
         div.innerHTML = `
           <input type="text" class="concepto" placeholder="Concepto" value="${escapeHtml(concepto)}" />
           <input type="number" class="precio" step="0.01" placeholder="€" value="${precio}" />
-          <button class="remove" title="Eliminar línea">✖</button>
+          <button class="remove">✖</button>
         `;
-        div.querySelector('.remove').addEventListener('click', () => div.remove());
+        div.querySelector('.remove').onclick = () => div.remove();
         lineasCont.appendChild(div);
-        return div;
       }
 
       function agregarClienteCampo(valor = '') {
@@ -180,42 +165,39 @@
         div.className = 'clienteLinea';
         div.innerHTML = `
           <input type="text" class="concepto" placeholder="Campo cliente" value="${escapeHtml(valor)}" />
-          <button class="remove" title="Eliminar campo">✖</button>
+          <button class="remove">✖</button>
         `;
-        div.querySelector('.remove').addEventListener('click', () => div.remove());
+        div.querySelector('.remove').onclick = () => div.remove();
         clienteCont.appendChild(div);
-        return div;
-      }
-
-      function formatFechaDMY(fechaISO) {
-        if (!fechaISO) return '';
-        const [y,m,d] = fechaISO.split('-');
-        return `${d} / ${m} / ${y}`;
       }
 
       function generarHtmlTicket(preview = false) {
         const empresa = document.getElementById('empresa').value || '---';
-        const fecha = formatFechaDMY(fechaInput.value || '');
+        const fecha = fechaInput.value || '';
         const obs = document.getElementById('obs').value || '';
         const numDoc = document.getElementById('numDoc').value || '';
 
         const conceptos = [...document.querySelectorAll('#lineas .concepto')];
         const precios = [...document.querySelectorAll('#lineas .precio')];
-        const clienteCampos = [...document.querySelectorAll('#clienteCampos .concepto')];
+        const clienteCamposInputs = [...document.querySelectorAll('#clienteCampos .concepto')];
 
         let html = '';
 
         if (logoDataURL) {
-          html += `<div style="text-align:center; margin-bottom:10px;"><img src="${logoDataURL}" alt="Logo" style="max-width:150px; max-height:80px; object-fit: contain;" /></div>`;
+          html += `<div style="text-align:center; margin-bottom:10px;"><img src="${logoDataURL}" style="max-width:150px; max-height:80px; object-fit:contain;" /></div>`;
         }
 
         html += `<h3>${escapeHtml(empresa)}</h3>`;
 
         if (numDoc.trim() !== '') html += `<p><strong>Documento:</strong> ${escapeHtml(numDoc)}</p>`;
 
-        html += `<p><strong>Fecha:</strong> ${escapeHtml(fecha || '---')}</p>`;
+        if (fecha) {
+          const d = new Date(fecha);
+          const fechaFormat = ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+          html += `<p><strong>Fecha:</strong> ${escapeHtml(fechaFormat)}</p>`;
+        } else html += `<p><strong>Fecha:</strong> ---</p>`;
 
-        const clienteDatos = clienteCampos.map(c => c.value.trim()).filter(t => t !== '');
+        const clienteDatos = clienteCamposInputs.map(i => i.value.trim()).filter(t => t !== '');
         if (clienteDatos.length > 0) {
           html += `<p class="clienteTitulo">Cliente:</p>`;
           clienteDatos.forEach(linea => html += `<p class="clienteLinea">${escapeHtml(linea)}</p>`);
@@ -228,14 +210,12 @@
           const c = conceptos[i].value || '';
           const p = parseFloat(precios[i].value) || 0;
           if (c.trim() !== '' || p > 0) {
-            // Use block structure to allow concept to wrap onto multiple lines and keep price aligned right
             html += `<div class="line"><div class="left">${escapeHtml(c)}</div><div class="right">${p.toFixed(2)}€</div></div>`;
             total += p;
           }
         }
 
-        html += `<hr>`;
-        html += `<p><strong>Total: ${total.toFixed(2)}€</strong></p>`;
+        html += `<hr><p><strong>Total: ${total.toFixed(2)}€</strong></p>`;
 
         if (obs.trim() !== '') html += `<hr><p>Obs: ${escapeHtml(obs)}</p>`;
 
@@ -249,53 +229,28 @@
         return html;
       }
 
-      // Event listeners
-      addLineBtn.addEventListener('click', () => agregarLinea());
-      clearLinesBtn.addEventListener('click', () => { lineasCont.innerHTML = ''; });
-      addClienteBtn.addEventListener('click', () => agregarClienteCampo());
-      clearClienteBtn.addEventListener('click', () => { clienteCont.innerHTML = ''; });
-      previewBtn.addEventListener('click', () => generarHtmlTicket(true));
-      generarBtn.addEventListener('click', () => { generarHtmlTicket(true); window.print(); });
+      document.getElementById('addLine').onclick = () => agregarLinea();
+      document.getElementById('clearLines').onclick = () => lineasCont.innerHTML = '';
+      document.getElementById('addClienteCampo').onclick = () => agregarClienteCampo();
+      document.getElementById('clearClienteCampos').onclick = () => clienteCont.innerHTML='';
 
-      downloadBtn.addEventListener('click', async () => {
+      document.getElementById('generar').onclick = () => { generarHtmlTicket(true); window.print(); };
+      document.getElementById('preview').onclick = () => generarHtmlTicket(true);
+
+      downloadBtn.onclick = async () => {
         const ticket = document.getElementById('ticket');
-        if (!ticket || ticket.style.display === 'none') { alert('Primero genera una vista previa del ticket.'); return; }
+        if (!ticket.style.display || ticket.style.display === 'none') return alert('Primero genera una vista previa');
         const canvas = await html2canvas(ticket);
-        const link = document.createElement('a'); link.download = 'ticket.png'; link.href = canvas.toDataURL(); link.click();
-      });
+        const link = document.createElement('a');
+        link.download = 'ticket.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      };
 
-      // Add initial lines
       agregarLinea();
       agregarClienteCampo();
 
-      // Enter handling for last price to add new concept line
-      lineasCont.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const lastPrecio = lineasCont.lastElementChild?.querySelector('.precio');
-          if (e.target === lastPrecio) {
-            e.preventDefault();
-            agregarLinea();
-            const lastConcept = lineasCont.lastElementChild.querySelector('.concepto'); if (lastConcept) lastConcept.focus();
-          }
-        }
-      });
-
-      // Enter handling for cliente fields
-      clienteCont.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const lastCampo = clienteCont.lastElementChild?.querySelector('.concepto');
-          if (e.target === lastCampo) {
-            e.preventDefault();
-            agregarClienteCampo();
-            const last = clienteCont.lastElementChild.querySelector('.concepto'); if (last) last.focus();
-          }
-        }
-      });
-
-      // Optional: register service worker (safe fail)
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-      }
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
     });
   </script>
 </body>
